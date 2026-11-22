@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>機械設計 単位一発変換機 | AIツール実験室 Day 6</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --success: #34d399;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 20px 16px 60px;
+    }
+    .container { max-width: 680px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 24px; }
+    .badge {
+      display: inline-block;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: bold;
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin-bottom: 8px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    h1 { font-size: 1.45rem; margin-bottom: 6px; }
+    .subtitle { font-size: 0.875rem; color: var(--muted); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      background: rgba(56, 189, 248, 0.16);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .input-row {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    input[type="number"], select {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 11px 12px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .out-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .out-item {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .out-unit { font-size: 0.82rem; color: var(--muted); font-weight: 600; }
+    .out-val { font-size: 1.05rem; font-weight: 800; color: var(--success); font-family: monospace; }
+    .cta-box { text-align: center; font-size: 0.875rem; }
+    .cta-box p { color: var(--muted); margin-bottom: 12px; }
+    .btn-group { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-block;
+      padding: 10px 16px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .btn-primary { background: var(--accent); color: #0f172a; }
+    .btn-outline { border: 1px solid var(--border); color: var(--text); }
+    footer { text-align: center; font-size: 0.75rem; color: var(--muted); margin-top: 20px; }
+    @media (max-width: 500px) {
+      .input-row, .out-list { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="badge">AIエージェント開発実験 Day 6</span>
+      <h1>機械設計 単位一発変換機</h1>
+      <p class="subtitle">SI単位と重力単位・インチ系を同時表示。力・応力・長さの換算を1画面で完結</p>
+    </header>
+
+    <div class="card">
+      <div class="tabs">
+        <button class="tab-btn active" id="tab-force" onclick="setCat('force')">力 (N / kgf)</button>
+        <button class="tab-btn" id="tab-stress" onclick="setCat('stress')">圧力・応力 (MPa)</button>
+        <button class="tab-btn" id="tab-length" onclick="setCat('length')">長さ (mm / inch)</button>
+      </div>
+
+      <div class="input-row">
+        <input type="number" id="inVal" value="100" step="any" oninput="convert()">
+        <select id="inUnit" onchange="convert()"></select>
+      </div>
+
+      <div class="out-list" id="outList"></div>
+    </div>
+
+    <div class="card cta-box">
+      <p>このツールは「無料AIエージェントだけで毎日Webアプリを作って公開する実験」で生成しました。</p>
+      <div class="btn-group">
+        <a href="https://note.com/sakurai_kei" target="_blank" rel="noopener" class="btn btn-primary">開発の裏側・プロンプトをnoteで見る</a>
+        <a href="https://note.com/sakurai_kei" target="_blank" rel="noopener" class="btn btn-outline">著者：桜井 圭のプロフィール</a>
+      </div>
+    </div>
+
+    <footer>※重力加速度 g = 9.80665 m/s²、1 inch = 25.4 mm として換算しています。</footer>
+  </div>
+
+  <script>
+    const G = 9.80665;
+    const categories = {
+      force: {
+        defaultUnit: 'N',
+        defaultVal: 100,
+        // 基準: N
+        units: [
+          { key: 'N', label: 'ニュートン (N)', toBase: v => v, fromBase: v => v },
+          { key: 'kN', label: 'キロニュートン (kN)', toBase: v => v * 1000, fromBase: v => v / 1000 },
+          { key: 'kgf', label: 'キログラム重 (kgf)', toBase: v => v * G, fromBase: v => v / G },
+          { key: 'lbf', label: 'ポンド重 (lbf)', toBase: v => v * 4.4482216, fromBase: v => v / 4.4482216 }
+        ]
+      },
+      stress: {
+        defaultUnit: 'MPa',
+        defaultVal: 100,
+        // 基準: Pa
+        units: [
+          { key: 'MPa', label: 'メガパスカル (MPa = N/mm²)', toBase: v => v * 1e6, fromBase: v => v / 1e6 },
+          { key: 'kPa', label: 'キロパスカル (kPa)', toBase: v => v * 1000, fromBase: v => v / 1000 },
+          { key: 'kgf_cm2', label: 'kgf/cm²', toBase: v => v * G * 10000, fromBase: v => v / (G * 10000) },
+          { key: 'psi', label: 'psi (lbf/in²)', toBase: v => v * 6894.757, fromBase: v => v / 6894.757 }
+        ]
+      },
+      length: {
+        defaultUnit: 'mm',
+        defaultVal: 25.4,
+        // 基準: mm
+        units: [
+          { key: 'mm', label: 'ミリメートル (mm)', toBase: v => v, fromBase: v => v },
+          { key: 'cm', label: 'センチメートル (cm)', toBase: v => v * 10, fromBase: v => v / 10 },
+          { key: 'm', label: 'メートル (m)', toBase: v => v * 1000, fromBase: v => v / 1000 },
+          { key: 'inch', label: 'インチ (inch)', toBase: v => v * 25.4, fromBase: v => v / 25.4 }
+        ]
+      }
+    };
+
+    let currentCat = 'force';
+
+    function setCat(cat) {
+      currentCat = cat;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(`tab-${cat}`).classList.add('active');
+
+      const sel = document.getElementById('inUnit');
+      sel.innerHTML = categories[cat].units
+        .map(u => `<option value="${u.key}">${u.label}</option>`)
+        .join('');
+      sel.value = categories[cat].defaultUnit;
+      document.getElementById('inVal').value = categories[cat].defaultVal;
+      convert();
+    }
+
+    function fmt(num) {
+      if (!isFinite(num)) return '0';
+      if (Math.abs(num) >= 10000) return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
+      if (Math.abs(num) >= 1) return Number(num.toFixed(4)).toString();
+      return Number(num.toPrecision(4)).toString();
+    }
+
+    function convert() {
+      const val = Number(document.getElementById('inVal').value) || 0;
+      const unitKey = document.getElementById('inUnit').value;
+      const catObj = categories[currentCat];
+      const srcUnit = catObj.units.find(u => u.key === unitKey) || catObj.units[0];
+      const baseVal = srcUnit.toBase(val);
+
+      document.getElementById('outList').innerHTML = catObj.units.map(u => `
+        <div class="out-item">
+          <span class="out-unit">${u.key}</span>
+          <span class="out-val">${fmt(u.fromBase(baseVal))}</span>
+        </div>
+      `).join('');
+    }
+
+    setCat('force');
+  </script>
+</body>
+</html>
